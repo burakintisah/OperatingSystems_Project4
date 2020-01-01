@@ -191,11 +191,15 @@ int sfs_umount ()
 
 int sfs_create(char *filename)
 {
-    if (find_file(filename) == 1 ){
+    if (find_file(filename)[0] != -1 ){
         return (-1);
     }
 
     int free_loc [2] = find_first_empty_file_loc();
+    if(free_loc[0] == -1){
+        printf("Error: Maximum file count has been exceed.\n");
+        return -1;
+    }
 
     read_block(fileInfos,free_loc[0]);
 
@@ -235,7 +239,7 @@ int sfs_open(char *filename, int mode){
 
     if (file -> head == -1 ){
         int file_d [2] = find_empty_fat_entry ();
-        if(file_d [0] == -1 ){
+        if(file_d[0] == -1 ){
             printf("Error: No empty fat entry.\n");
             return (-1);
         }
@@ -393,23 +397,58 @@ int sfs_delete(char *filename)
 
 int * find_first_empty_file_loc (){
     int result [2];
-    char buf 
+    result[0] = -1;
+    result[1] = -1; 
 
     for (int i = 1; i < 8; i++){
-
+        read_block(fileInfos, i);
+        for (int j = 0; j<8; j++){
+            if(fileInfos[j]->isUsed == false){
+                result[0] = i;
+                result[1] = j;
+                return result;
+            }
+        }
     }
-
     return result;
 }
 
 int * find_file(char* filename){
     int result [2];
+    result[0] = -1;
+    result[1] = -1; 
+
+    for (int i = 1; i < 8; i++){
+        read_block(fileInfos, i);
+        for (int j = 0; j<8; j++){
+            if(fileInfos[j]->name == filename){
+                result[0] = i;
+                result[1] = j;
+                return result;
+            }
+        }
+    }
 
     return result;
 }
 
 int find_empty_fat_entry (){
+    int result [2];
+    result[0] = -1;
+    result[1] = -1; 
 
+    for (int i = 8; i < 1032; i++){
+        read_block(fat, i);
+        for (int j = 0; j<128; j++){
+            if(fat[j]->isUsed == false){
+                result[0] = i;
+                result[1] = j;
+                return result;
+            }
+        }
+    }
+
+    return result;
 }
 
 
