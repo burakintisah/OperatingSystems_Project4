@@ -16,12 +16,20 @@
 #define HEAD_DATA           1032
 #define MAX_NUMBER_OPEN_FILE 10
 
+
+
+//int blockNo = fd / 128 + 8; -> buna niye 8 eklememistik
+//int indexNo = fd % 128;
+
+// datablock icin fdye 1032 degil 1024 vermemiz gerekmiyo mu? (fd sadece fatlarin basladigi yerden basladigi icin)
+
 typedef struct
 {
+    ####update num of file and num of blocks
     int num_of_file;
     // Data info
     int num_of_blocks;
-    int num_of_used_data_blocks;
+    //int num_of_used_data_blocks;
     int num_of_free_data_blocks;
 
 } superBlock;
@@ -302,7 +310,7 @@ int sfs_getsize (int fd){
 }
 
 int sfs_read(int fd, void *buf, int n){
-
+    ///blockno = fd/ 128 + 8 ????
     int blockNo = fd / 128;
     int indexNo = fd % 128;
 
@@ -337,6 +345,7 @@ int sfs_read(int fd, void *buf, int n){
             break;
         
         fd = found->file_next;
+        ////fd + 1024 ??
         read_block(dataBlock,fd+1032);
     }
 
@@ -349,6 +358,24 @@ int sfs_read(int fd, void *buf, int n){
 
 
 int sfs_append(int fd, void *buf, int n){
+
+    int isopen = 0; 
+    int sizeoffile = 0;
+    int* place;
+
+    for (int i = 0 ; i < MAX_NUMBER_OPEN_FILE; i++){
+        if (openFiles[i]->openedFile == fd ){
+            char * file_name = openFiles[i]->name;
+            place = find_file(file_name);
+            read_block(fileInfos,place[0]);
+            sizeoffile = fileInfos[place[1]]->size;
+            isopen = 1;
+        }
+    }
+
+    if(isopen == 0){
+        printf("Error: The file is not open.\n");
+    }
 
     int blockNo = fd / 128;
     int indexNo = fd % 128;
@@ -372,26 +399,104 @@ int sfs_append(int fd, void *buf, int n){
     int doluluk = boyut % 1024;
     int bosluk = 1024 - doluluk;
 
-    if (n<bosluk){
+    if (n < bosluk){
         for (int i= 1; i <= n; i++){
             dataBlock[doluluk+i] = buf[i-1];
         }
+        sizeoffile += n;
+        fileInfos[place[1]]->size = sizeoffile;
+        write_block(fileInfos, place[0]);
+        write_block(dataBlock,fd + 1032);
+        return 0;
     }
-    while (n>bosluk){
+    int free-blocks;
+    read_block(ptr_superBlock, 0);
+    free-blocks = ptr_superBlock->num_of_free_data_blocks;
+    if(n == bosluk){
+        for (int i= 1; i <= n; i++){
+            dataBlock[doluluk+i] = buf[i-1];
+        }
+        int* newfat = find_empty_fat_entry();
+        int fd0 = (newfat[0]-8) * 128 + newfat[1];
+        found->file_next = fd0;
+        fat[indexNo] = found;
+        sizeoffile += n;
+        fileInfos[place[1]]->size = sizeoffile;
+        free-blocks -= 1;
+        write_block(fat,blockNo);
+        write_block(fileInfos, place[0]);
+        write_block(free-blocks, 0);
+        read_block(fat, newfat[0]);
+        fat[newfat[1]]->isUsed = 1;
+        write_block(fat, newfat[0]);
+        write_block(dataBlock,fd + 1032);
+        return 0;
+    }
+
+    
+    while (n >= bosluk){
+        
+        if(n > (1024 * free-blocks)){
+            n = (1024 * free-blocks);
+            sizeoffile += n;
+        }
+    
         for (int i= 1; i <= bosluk; i++){
             dataBlock[doluluk+i] = buf[i-1];
         }
-        n -= bosluk;
 
-        
+        n -= bosluk;
+        bosluk = 1024;
+        doluluk = 0;
+        free-blocks -= 1;
+        int* newfat0 = find_empty_fat_entry();
+        int fd1 = (newfat0[0]-8) * 128 + newfat0[1];
+        found->file_next = fd1;
+        fat[indexNo] = found;
+        write_block(fat,blockNo);
+        read_block(fat, newfat0[0]);
+        fat[newfat0[1]]->isUsed = 1;
+        write_block(fat, newfat0[0]);
+        blockNo = fd1 / 128;
+        indexNo = fd1 % 128;
+        write_block(dataBlock,fd + 1032);
+        fd = fd1;
     }
 
-
+    fileInfos[place[1]]->size = sizeoffile;
+    write_block(fileInfos, place[0]);
+    write_block(free-blocks, 0);
+    for (int i= 1; i <= n; i++){
+            dataBlock[doluluk+i] = buf[i-1];
+    }
+    write_block(dataBlock,fd + 1032);
     return (0); 
 }
 
 int sfs_delete(char *filename)
-{
+{   
+    int* location = find_file(filename);
+    if(location[0] == -1){
+        printf("Error: No such file to delete.\n");
+    }
+    int head;
+    read_block(fileInfos, location[0]);
+    head = fileInfos[location[1]]->head;
+    fileInfos[location[1]]->isUsed = false;
+    write_block(fileInfos, location[0]);
+    int blockNo = head / 128 + 8;
+    int indexNo = head % 128;
+    int next = 0;
+    read_block(fat, blockNo);
+    while (fat[indexNo]->file_next != -1 ){
+        fat[indexNo]->isUsed = false;
+        int next = fat[indexNo]->file_next;
+        fat[indexNo]->file_next = -1;
+        write_block();
+        blockNo = next / 128 + 8;
+        indexNo = next  % 128;
+        read_block(fat,blockNo);
+    }
     return (0); 
 }
 
@@ -403,7 +508,7 @@ int * find_first_empty_file_loc (){
     for (int i = 1; i < 8; i++){
         read_block(fileInfos, i);
         for (int j = 0; j<8; j++){
-            if(fileInfos[j]->isUsed == false){
+            if(fileInfos[j]->isUsed == 0){
                 result[0] = i;
                 result[1] = j;
                 return result;
@@ -440,7 +545,7 @@ int find_empty_fat_entry (){
     for (int i = 8; i < 1032; i++){
         read_block(fat, i);
         for (int j = 0; j<128; j++){
-            if(fat[j]->isUsed == false){
+            if(fat[j]->isUsed == 0){
                 result[0] = i;
                 result[1] = j;
                 return result;
