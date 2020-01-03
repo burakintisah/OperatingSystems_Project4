@@ -4,6 +4,61 @@
 
 #define BLOCKSIZE 1024 // bytes
 
+#define MAX_FILENAME_LEN    32
+#define MAX_FAT_ENTRIES     128   // 128 
+#define FAT_ENTRIES_COUNT   1024
+#define MAX_FILE            56
+#define FILE_COUNT_PER_BLOCK 8
+#define TOTAL_BLOCK_FOR_FILE 7
+#define HEAD_DATA           1032
+#define MAX_NUMBER_OPEN_FILE 10
+
+typedef struct{
+    //update num of file and num of blocks
+    // int num_of_file;
+    // Data info
+    //int num_of_blocks;
+    int num_of_free_data_blocks;
+    int dummy [255];
+
+} superBlock;
+
+
+typedef struct{
+    // 128 B
+    char * name ;    // name of file
+    int  isUsed;                     // whether file is used
+    int  mode;                       // read or write
+    int  size;                       // size of file
+    //int  blocks_count;               // number of blocks
+    //int  num_fd;                     // # of file descriptors using this file
+    int  head;                       // index of first entry in fat table
+    int dummy [25]; 
+
+} fileInfo;
+
+/* file descriptor */
+typedef struct{
+    // 8 B
+    int isUsed ;                 // whether the file descriptor is being used
+    int file_next;               // next data block to read
+
+} fileDes;
+
+typedef struct {
+    char * name ; 
+    int  openedFile;
+} opened;
+
+typedef struct {
+    int val[2];
+}myArray;
+
+typedef struct {
+   char name [32];
+   int len;
+}structName;
+
 int create_vdisk (char *vdiskname, int m);
 /* 
    This function will be used to create a virtual disk (as simple Linux file)
@@ -98,8 +153,7 @@ int sfs_append(int fd, void *buf, int n);
    is the address of) a static array holding the data or a dynamically 
    allocted memory space holding the data. The parameter n is the size of 
    the data to write (append) into the file. Upon failure, will return -1. 
-   Otherwise, the number of bytes
-   successfully appended will be returned. 
+   Otherwise, the number of bytes successfully appended will be returned. 
  */ 
 
 
@@ -109,4 +163,13 @@ int sfs_delete(char *filename);
    file to be deleted is filename. If succesful, 0 will be returned. 
    In case of an error, -1 will be returned. 
 */ 
+
+// HELPER FUNCTIONS
+
+myArray find_first_empty_file_loc ();
+myArray find_file ();
+myArray find_empty_fat_entry ();
+int checkName(); 
+
+
 
