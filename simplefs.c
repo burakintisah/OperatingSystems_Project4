@@ -18,7 +18,7 @@
 
 
 
-//int blockNo = fd / 128 + 8; -> buna niye 8 eklememistik
+//int blockNo = fd / 128 + 9; -> buna niye 8 eklememistik
 //int indexNo = fd % 128;
 
 // datablock icin fdye 1032 degil 1024 vermemiz gerekmiyo mu? (fd sadece fatlarin basladigi yerden basladigi icin)
