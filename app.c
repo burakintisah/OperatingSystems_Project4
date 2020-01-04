@@ -2,12 +2,20 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include    <sys/time.h>
 #include "simplefs.h"
 
 #define DISKNAME "vdisk1.bin"
 
 int main()
 {
+    struct timeval startTime, endTime;
+    gettimeofday(&startTime, NULL);
+    gettimeofday(&endTime, NULL);
+    long seconds; 
+    long mseconds; 
+    long total; 
+
     int ret;
     int fd1, fd2, fd; 
     int i; 
@@ -39,10 +47,21 @@ int main()
         exit (1); 
     }
 
+
     printf ("creating files\n"); 
+    gettimeofday(&startTime, NULL);
     sfs_create ("file1.bin");
     sfs_create ("file2.bin");
     sfs_create ("file3.bin");
+    sfs_create ("file4.bin");
+    sfs_create ("file5.bin");
+
+    gettimeofday(&endTime, NULL);
+    seconds = endTime.tv_sec - startTime.tv_sec;
+    mseconds= endTime.tv_usec - startTime.tv_usec;
+    total = (seconds * 1000000) + mseconds;
+    printf("Files Created\n");
+    printf("File Creation took %ld microseconds\n", total);
 
     fd1 = sfs_open ("file1.bin", MODE_APPEND);
     fd2 = sfs_open ("file2.bin", MODE_APPEND); 
@@ -62,23 +81,43 @@ int main()
     sfs_close(fd1); 
     sfs_close(fd2); 
 
+    printf("APPEND STARTED\n");
+    gettimeofday(&startTime, NULL);
+
     fd = sfs_open("file3.bin", MODE_APPEND);
-    for (i = 0; i < 10000; ++i) {
-        printf("%d\n",i );
-        memcpy (buffer, buffer2, 8); // just to show memcpy
-        sfs_append(fd, (void *) buffer, 8); 
+    for (i = 0; i < 100; ++i) {
+        memcpy (buffer, buffer2, 5); // just to show memcpy
+        sfs_append(fd, (void *) buffer, 5); 
     }
-    sfs_close (fd); 
+    sfs_close (fd);
+
+    gettimeofday(&endTime, NULL);
+    seconds = endTime.tv_sec - startTime.tv_sec;
+    mseconds= endTime.tv_usec - startTime.tv_usec;
+    total = (seconds * 1000000) + mseconds;
+    printf("APPEND ENDED\n");
+    printf("APPEND %ld microseconds\n", total);
+
+    printf("READ STARTED\n");
+    gettimeofday(&startTime, NULL);
 
     fd = sfs_open("file3.bin", MODE_READ);
 
     size = sfs_getsize (fd);
+    printf("%d\n",size );
     for (i = 0; i < size; ++i) {
-        printf("%d\n",i);
+
         sfs_read (fd, (void *) buffer, 1);
         c = (char) buffer[0];
     }
     sfs_close (fd); 
+
+    gettimeofday(&endTime, NULL);
+    seconds = endTime.tv_sec - startTime.tv_sec;
+    mseconds= endTime.tv_usec - startTime.tv_usec;
+    total = (seconds * 1000000) + mseconds;
+    printf("READ ENDED\n");
+    printf("READ took %ld microseconds\n", total);
     
     ret = sfs_umount(); 
 }

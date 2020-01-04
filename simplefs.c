@@ -408,7 +408,6 @@ int sfs_append(int fd, void *buf, int n){
     
     while (found.file_next != -1 ){
         fd = found.file_next;
-        //printf("PLSSSS              %d      m       PLSSSS2222222\n",fd);
         blockNo = fd / 128 + 8;
         indexNo = fd % 128;
 
@@ -442,7 +441,6 @@ int sfs_append(int fd, void *buf, int n){
 
         int fd0 = (newfat[0]-8) * 128 + newfat[1];  
         found.file_next = fd0;
-        printf("                                        %d\n",fd0 );
         fat[indexNo] = found;
         sizeoffile += n;
         fileInfos[place[1]].size = sizeoffile;
@@ -510,7 +508,6 @@ int sfs_append(int fd, void *buf, int n){
     //         dataBlock[doluluk+i] = buf[i-1];
     // }
     write_block(dataBlock,fd + 1032);
-    printf("SON RETURRRUNNUANSDUNDS 2222222222\n");
     return ret_val; 
 }
 
