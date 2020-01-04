@@ -114,7 +114,6 @@ int sfs_format (char *vdiskname)
         fileInfos[i].name = "";
     }
 
-    fileInfos[4].isUsed = 1;
 
     for (int i=1; i<=TOTAL_BLOCK_FOR_FILE; i++){
         write_block(fileInfos,i);
@@ -402,21 +401,20 @@ int sfs_append(int fd, void *buf, int n){
 
     int blockNo = fd / 128 + 8;
     int indexNo = fd % 128;
-    //printf("%d          %d\n",blockNo,indexNo );
 
     read_block(fat,blockNo);
     fileDes found = fat[indexNo];
     char dataBlock [1024];
-
+    
     while (found.file_next != -1 ){
         fd = found.file_next;
+        //printf("PLSSSS              %d      m       PLSSSS2222222\n",fd);
         blockNo = fd / 128 + 8;
         indexNo = fd % 128;
 
         read_block(fat,blockNo);
         found = fat[indexNo];
     }
-
     read_block(dataBlock, fd + 1032);
 
     int boyut = sfs_getsize(temp);
@@ -425,42 +423,43 @@ int sfs_append(int fd, void *buf, int n){
 
     if (n < bosluk){
         memcpy(dataBlock+doluluk, buf, n);
-        // for (int i= 1; i <= n; i++){
-        //     dataBlock[doluluk+i] = buf[i-1];
-        // }
         sizeoffile += n;
         fileInfos[place[1]].size = sizeoffile;
         write_block(fileInfos, place[0]);
         write_block(dataBlock,fd + 1032);
         return n;
     }
+
     int free_blocks;
     read_block(ptr_superBlock, 0);
     free_blocks = ((superBlock *)ptr_superBlock)->num_of_free_data_blocks;
     if(n == bosluk){
         memcpy(dataBlock+doluluk, buf, n);
-        // for (int i= 0; i < n; i++){
-        //     dataBlock[doluluk+i] = buf[i];
-        // }
         myArray res = find_empty_fat_entry();
+        
+        read_block(fat,blockNo);
         int newfat [2] = {res.val[0], res.val[1]};
 
         int fd0 = (newfat[0]-8) * 128 + newfat[1];  
         found.file_next = fd0;
+        printf("                                        %d\n",fd0 );
         fat[indexNo] = found;
         sizeoffile += n;
         fileInfos[place[1]].size = sizeoffile;
         free_blocks -= 1;
         write_block(fat,blockNo);
+
         write_block(fileInfos, place[0]);
         ((superBlock *)ptr_superBlock)->num_of_free_data_blocks = free_blocks;
-        write_block(ptr_superBlock, 0);  //change ptr super block than write it back 
+        write_block(ptr_superBlock, 0);  //change ptr super block than write it back
+
         read_block(fat, newfat[0]);
         fat[newfat[1]].isUsed = 1;
         fat[newfat[1]].file_next = -1;
-
         write_block(fat, newfat[0]);
+
         write_block(dataBlock,fd + 1032);
+
         return n;
     }
 
@@ -511,6 +510,7 @@ int sfs_append(int fd, void *buf, int n){
     //         dataBlock[doluluk+i] = buf[i-1];
     // }
     write_block(dataBlock,fd + 1032);
+    printf("SON RETURRRUNNUANSDUNDS 2222222222\n");
     return ret_val; 
 }
 

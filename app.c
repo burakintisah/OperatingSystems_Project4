@@ -63,7 +63,7 @@ int main()
     sfs_close(fd2); 
 
     fd = sfs_open("file3.bin", MODE_APPEND);
-    for (i = 0; i < 12000; ++i) {
+    for (i = 0; i < 10000; ++i) {
         printf("%d\n",i );
         memcpy (buffer, buffer2, 8); // just to show memcpy
         sfs_append(fd, (void *) buffer, 8); 
@@ -74,6 +74,7 @@ int main()
 
     size = sfs_getsize (fd);
     for (i = 0; i < size; ++i) {
+        printf("%d\n",i);
         sfs_read (fd, (void *) buffer, 1);
         c = (char) buffer[0];
     }
