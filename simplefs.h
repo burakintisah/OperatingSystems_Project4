@@ -48,6 +48,7 @@ typedef struct{
 typedef struct {
     char * name ; 
     int  openedFile;
+    int offset;
 } opened;
 
 typedef struct {

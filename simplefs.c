@@ -6,10 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
 #include "simplefs.h"
-
-// datablock icin fdye 1032 degil 1024 vermemiz gerekmiyo mu? (fd sadece fatlarin basladigi yerden basladigi icin)
 
 int vdisk_fd; // global virtual disk file descriptor
               // will be assigned with the sfs_mount call
@@ -151,6 +148,7 @@ int sfs_mount (char *vdiskname)
 
 int sfs_umount ()
 {
+    vdisk_fd = open(glob_name,O_RDONLY);
     fsync (vdisk_fd); 
     if (close (vdisk_fd) == -1 ){
         printf("Error: Could not close the vdisk.\n");
@@ -239,26 +237,23 @@ int sfs_open(char *filename, int mode){
 
         desc = ((fat_d[0]-8) * 128) + fat_d[1];
         file.head = desc;
-        fileInfos[file_place[1]] = file;
-
-        write_block(fileInfos,file_place[0]);
-        
-
     }
+
+    fileInfos[file_place[1]] = file;
+    write_block(fileInfos,file_place[0]);
 
     for (int i = 0 ; i < MAX_NUMBER_OPEN_FILE ; i++){
         if (openFiles[i].openedFile == -1 ){
-            openFiles[i].openedFile = desc;
+            openFiles[i].openedFile = file.head;
+            openFiles[i].offset = 0;
             openFiles[i].name = filename;
             openFileCount += 1;
             break;
         }
     }
 
-    printf("                    %d\n",file.head );
     fileInfo as [FILE_COUNT_PER_BLOCK];
     read_block(as,file_place[0]);
-    printf("THIS IS The MODE OF OPENED FILE             %d\n",as[file_place[1]].mode);
 
     return file.head;
   
@@ -276,6 +271,7 @@ int sfs_close(int fd){
             write_block(fileInfos,fil[0]);
 
             openFiles[i].openedFile = -1;
+            openFiles[i].offset = 0;
             openFileCount -= 1;
             return 0;
         }
@@ -298,7 +294,22 @@ int sfs_getsize (int fd){
 }
 
 int sfs_read(int fd, void *buf, int n){
-    ///blockNo = fd/ 128 + 8 ????
+
+    int wanted = n;
+
+    int isopened = 0;
+    int i;
+    for (i = 0 ; i < MAX_NUMBER_OPEN_FILE; i++){
+        if (openFiles[i].openedFile == fd ){
+            isopened = 1;
+            break;
+        }
+    }
+
+    if(isopened == 0){
+        printf("Error: The file is not open.\n");
+        return (-1);
+    }
     int blockNo = fd / 128 + 8;
     int indexNo = fd % 128;
 
@@ -311,26 +322,37 @@ int sfs_read(int fd, void *buf, int n){
 
     // whether data block's size is smaller than n 
     int dataSize = sfs_getsize(fd);
-    if(dataSize < n){
-        n = dataSize;
+
+    if(dataSize - (openFiles[i].offset) < wanted){
+        wanted = dataSize - (openFiles[i].offset);
     }
 
-    if(n <= 1024){
-        memcpy(buf,dataBlock,n);
-        // for (int i=0; i<n;i++){
-        //     buf[i] = dataBlock[i];
-        // }
-        return n;
-    }
+    n = dataSize;
+    //char buffer[n];
+    char * buffer = malloc(n);
+    // if(dataSize < n){
+    //     n = dataSize;
+    // }
+
+    // if(n <= 1024){
+    //     memcpy(buffer-1,dataBlock,n);
+    //     // for (int i=0; i<n;i++){
+    //     //     buf[i] = dataBlock[i];
+    //     // }
+    //     //return n;
+    // }
 
     int count = 0;
     while (n > 1024){
-        memcpy(buf + count, dataBlock, 1024);
+
+        memcpy(buffer + count, dataBlock, 1024);
+
         // for (int i=0; i<1024;i++){
         //     buf[count + i] = dataBlock[i]; 
         // }
         count += 1024;
         n = n - 1024; 
+
         if (found.file_next == -1)
             break;
         
@@ -338,12 +360,17 @@ int sfs_read(int fd, void *buf, int n){
 
         read_block(dataBlock,fd+1032);
     }
-    memcpy(buf+count, dataBlock, n);
+
+    memcpy(buffer+count, dataBlock, n);
     // for (int i=0; i<n;i++){
     //     buf[count + i] = dataBlock[i];
     // }
+
     count += n;
-    return count; 
+    memcpy(buf, buffer + openFiles[i].offset, wanted);
+    openFiles[i].offset += wanted; 
+    free(buffer);
+    return wanted; 
 }
 
 
@@ -363,8 +390,8 @@ int sfs_append(int fd, void *buf, int n){
             place [1] = res.val[1];
             read_block(fileInfos,place[0]);
             sizeoffile = fileInfos[place[1]].size;
-
             isopen = 1;
+            break;
         }
     }
 
@@ -375,7 +402,7 @@ int sfs_append(int fd, void *buf, int n){
 
     int blockNo = fd / 128 + 8;
     int indexNo = fd % 128;
-    printf("%d          %d\n",blockNo,indexNo );
+    //printf("%d          %d\n",blockNo,indexNo );
 
     read_block(fat,blockNo);
     fileDes found = fat[indexNo];

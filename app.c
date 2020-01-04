@@ -23,20 +23,20 @@ int main()
     // create a virtual disk and format it as below
     ret  = create_vdisk (DISKNAME, 24); // size = 16 MB
     if (ret != 0) {
-	printf ("there was an error in creating the disk\n");
-	exit(1); 
+        printf ("there was an error in creating the disk\n");
+        exit(1); 
     }
     ret = sfs_format (DISKNAME);
     if (ret != 0) {
-	printf ("there was an error in format\n");
-	exit(1); 
+        printf ("there was an error in format\n");
+        exit(1); 
     }
     // ****************************************************
 
     ret = sfs_mount (DISKNAME); 
     if (ret != 0) {
-	printf ("could not mount \n");
-	exit (1); 
+        printf ("could not mount \n");
+        exit (1); 
     }
 
     printf ("creating files\n"); 
@@ -46,45 +46,38 @@ int main()
 
     fd1 = sfs_open ("file1.bin", MODE_APPEND);
     fd2 = sfs_open ("file2.bin", MODE_APPEND); 
+    for (i = 0; i < 10000; ++i) {
+    buffer[0] =   (char) 65;  
+    sfs_append (fd1, (void *) buffer, 1);
+    }
 
-    // for (i = 0; i < 10000; ++i) {
-    // 	buffer[0] =   (char) 65;  
-    // 	sfs_append (fd1, (void *) buffer, 1);
-    // }
-
- //    for (i = 0; i < 10000; ++i) {
-	// buffer[0] = (char) 70;
-	// buffer[1] = (char) 71;
-	// buffer[2] = (char) 72;
-	// buffer[3] = (char) 73;
-	// sfs_append(fd2, (void *) buffer, 4);
- //    }
+    for (i = 0; i < 10000; ++i) {
+        buffer[0] = (char) 70;
+        buffer[1] = (char) 71;
+        buffer[2] = (char) 72;
+        buffer[3] = (char) 73;
+        sfs_append(fd2, (void *) buffer, 4);
+    }
     
- //    sfs_close(fd1); 
- //    sfs_close(fd2); 
+    sfs_close(fd1); 
+    sfs_close(fd2); 
 
     fd = sfs_open("file3.bin", MODE_APPEND);
-
-    //for (i = 0; i < 10000; ++i) {
-	   //memcpy (buffer, buffer2, 8); // just to show memcpy
-	   //sfs_append(fd, (void *) buffer, 8); 
-    //}
+    for (i = 0; i < 12000; ++i) {
+        printf("%d\n",i );
+        memcpy (buffer, buffer2, 8); // just to show memcpy
+        sfs_append(fd, (void *) buffer, 8); 
+    }
     sfs_close (fd); 
-
 
     fd = sfs_open("file3.bin", MODE_READ);
-    // printf("burda mi \n");
-    //size = sfs_getsize (fd);
-    // printf("2.52.52.5\n");
-    //sfs_read (fd, (void *) buffer, 8);
-    //printf("%s\n", buffer);
-    // printf("333333333333\n");
 
-    // for (i = 0; i < size; ++i) {
-	   // sfs_read (fd, (void *) buffer, 1);
-	   // c = (char) buffer[0];
-    // }
+    size = sfs_getsize (fd);
+    for (i = 0; i < size; ++i) {
+        sfs_read (fd, (void *) buffer, 1);
+        c = (char) buffer[0];
+    }
     sfs_close (fd); 
     
- //    ret = sfs_umount(); 
+    ret = sfs_umount(); 
 }
